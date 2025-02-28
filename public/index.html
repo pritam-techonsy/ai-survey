@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot Processor</title>
+</head>
+<body>
+    <h2>AI Chatbot Processor</h2>
+    <input type="text" id="prompt" placeholder="Enter your request"> <br>
+    <button onclick="getData()">Process Request</button>
+    <div id="output"></div>
+
+    <script>
+        const promptElem = document.getElementById('prompt');
+        const outputElem = document.getElementById('output');
+
+        async function getData() {
+            try {
+                const response = await fetch('/api/prompt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt: promptElem.value })
+                });
+
+                const data = await response.json();
+                console.log("API Response:", data); // Debugging
+
+                if (data.choices && data.choices.length > 0) {
+                    outputElem.innerHTML = data.choices[0].message.content;
+                    executeScripts(outputElem);
+                } else {
+                    outputElem.innerHTML = "Error: Unexpected response format.";
+                }
+            } catch (error) {
+                console.error("Error:", error.message);
+                outputElem.innerHTML = "Error: " + error.message;
+            }
+        }
+
+        function executeScripts(element) {
+            const scripts = element.getElementsByTagName("script");
+
+            for (let i = 0; i < scripts.length; i++) {
+                const newScript = document.createElement("script");
+                if (scripts[i].src) {
+                    newScript.src = scripts[i].src;
+                    newScript.onload = () => console.log(`Loaded: ${scripts[i].src}`);
+                    document.body.appendChild(newScript);
+                } else {
+                    newScript.textContent = scripts[i].textContent;
+                    document.body.appendChild(newScript);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
