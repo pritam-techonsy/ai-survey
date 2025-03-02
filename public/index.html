@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Chatbot Processor</title>
+    <title>AI Survey Form Generator</title>
 </head>
 <body>
-    <h2>AI Chatbot Processor</h2>
-    <input type="text" id="prompt" placeholder="Enter your request"> <br>
-    <button onclick="getData()">Process Request</button>
+    <nav>
+        <button onclick="window.location.href='/surveys.html'">Survey Dashboard</button>
+    </nav>
+    <h2>Create a Survey Form from Your Prompt</h2>
+    <input type="text" id="prompt" placeholder="Enter form details" /><br>
+    <button onclick="getData()">Generate Form</button>
     <div id="output"></div>
 
     <script>
@@ -28,9 +31,9 @@
                 const data = await response.json();
                 console.log("API Response:", data); // Debugging
 
-                if (data.choices && data.choices.length > 0) {
-                    outputElem.innerHTML = data.choices[0].message.content;
-                    executeScripts(outputElem);
+                // Updated response handling
+                if (data.link) {
+                    outputElem.innerHTML = `Survey Link: <a href="${data.link}" target="_blank">${data.link}</a>`;
                 } else {
                     outputElem.innerHTML = "Error: Unexpected response format.";
                 }

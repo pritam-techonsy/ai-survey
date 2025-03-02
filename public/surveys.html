@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Survey Dashboard</title>
+</head>
+<body>
+  <nav>
+    <button onclick="window.location.href='/index.html'">Create Survey</button>
+    <button onclick="window.location.href='/surveys.html'">Survey Dashboard</button>
+  </nav>
+  <h2>Survey Dashboard</h2>
+  <div id="survey-list">Loading surveys...</div>
+
+  <script>
+    async function loadSurveys() {
+      try {
+        const response = await fetch('/api/surveys');
+        const surveys = await response.json();
+        const listElem = document.getElementById('survey-list');
+        if (surveys.length === 0) {
+          listElem.innerHTML = 'No surveys created yet.';
+          return;
+        }
+        listElem.innerHTML = '';
+        surveys.forEach(survey => {
+          const item = document.createElement('div');
+          item.innerHTML = `
+            Survey ID: ${survey.id} - Responses: ${survey.responses} 
+            [ <a href="${survey.link}" target="_blank">View Form</a> | 
+              <a href="${survey.responsesLink}" target="_blank">View Responses</a> ]
+          `;
+          listElem.appendChild(item);
+        });
+      } catch (error) {
+        document.getElementById('survey-list').innerText = 'Error loading surveys.';
+      }
+    }
+    loadSurveys();
+  </script>
+</body>
+</html>
