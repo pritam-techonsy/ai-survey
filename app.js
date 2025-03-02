@@ -1,8 +1,8 @@
 const express = require('express');
 const connectDB = require('./config/db');
 const path = require('path');
-const fetch = require('node-fetch');
-require('dotenv').config();
+const axios = require('axios');
+require('dotenv').config(); // Add this line to load environment variables
 
 const app = express();
 
@@ -20,29 +20,26 @@ app.post('/api/prompt', async (req, res) => {
   const { prompt } = req.body;
 
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
+    const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content: "You are an AI that generates only functional HTML and JavaScript code, which can be inserted into a <div id='output'></div>. Ensure all scripts execute properly."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ]
+    }, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${process.env.GROK_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          {
-            role: "system",
-            content: "You are an AI that generates only functional HTML and JavaScript code, which can be inserted into a <div id='output'></div>. Ensure all scripts execute properly."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ]
-      })
+      }
     });
 
-    const data = await response.json();
-    res.json(data);
+    res.json(response.data);
   } catch (error) {
     console.error("Error:", error.message);
     res.status(500).json({ error: error.message });
