@@ -4,6 +4,8 @@ const path = require('path');
 const axios = require('axios');
 const sgMail = require('@sendgrid/mail'); // Add SendGrid
 require('dotenv').config(); // Add this line to load environment variables
+const Survey = require('./models/Survey');
+const SurveyResponse = require('./models/SurveyResponse');
 
 const app = express();
 
@@ -17,10 +19,6 @@ connectDB();
 app.use(express.static(path.join(__dirname, 'public')));
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-
-// In-memory store for surveys and responses
-const surveys = {};
-const surveyResponses = {};
 
 // Example Auth API: Registration
 app.post('/api/auth/register', async (req, res) => {
@@ -69,13 +67,10 @@ app.post('/api/prompt', async (req, res) => {
       }
     });
 
-    // Extract the generated survey form HTML and store it with a unique ID.
     const surveyHTML = response.data.choices[0].message.content;
-    const surveyId = Date.now().toString();
-    surveys[surveyId] = surveyHTML;
-    surveyResponses[surveyId] = []; // initialize responses array
-    // Return a link to the generated survey form.
-    res.json({ link: `/survey/${surveyId}` });
+    const newSurvey = await Survey.create({ surveyHTML });
+    // Return the newly created survey’s ID
+    res.json({ link: `/survey/${newSurvey._id}` });
   } catch (error) {
     console.error("Error:", error.message);
     res.status(500).json({ error: error.message });
@@ -83,14 +78,16 @@ app.post('/api/prompt', async (req, res) => {
 });
 
 // Modified endpoint: Serve survey form wrapped in a form to capture responses
-app.get('/survey/:id', (req, res) => {
-  const surveyHTML = surveys[req.params.id];
-  if (surveyHTML) {
-    // Wrap the survey content in a form and add submission handling script
+app.get('/survey/:id', async (req, res) => {
+  try {
+    const foundSurvey = await Survey.findById(req.params.id);
+    if (!foundSurvey) {
+      return res.status(404).send('Survey not found.');
+    }
     const wrappedHTML = `
       <!-- ...existing generated survey HTML... -->
       <form id="surveyForm">
-        ${surveyHTML}
+        ${foundSurvey.surveyHTML}
         <!-- Removed extra submit button -->
       </form>
       <script>
@@ -109,40 +106,60 @@ app.get('/survey/:id', (req, res) => {
       </script>
     `;
     res.send(wrappedHTML);
-  } else {
-    res.status(404).send('Survey not found.');
+  } catch (error) {
+    res.status(500).send('Error retrieving survey.');
   }
 });
 
 // New endpoint: List surveys with response count
-app.get('/api/surveys', (req, res) => {
-  const surveyList = Object.keys(surveys).map(id => ({
-    id,
-    responses: surveyResponses[id] ? surveyResponses[id].length : 0,
-    link: `/survey/${id}`,
-    responsesLink: `/survey/${id}/responses`
-  }));
-  res.json(surveyList);
-});
-
-// New endpoint: Save survey responses (assumes survey form submits JSON)
-app.post('/survey/:id/response', (req, res) => {
-  const surveyId = req.params.id;
-  if (surveys[surveyId]) {
-    surveyResponses[surveyId].push(req.body);
-    res.json({ message: 'Response recorded.' });
-  } else {
-    res.status(404).json({ error: 'Survey not found.' });
+app.get('/api/surveys', async (req, res) => {
+  try {
+    const allSurveys = await Survey.find({});
+    // For each survey, count SurveyResponse documents referencing it
+    const surveyList = [];
+    for (const s of allSurveys) {
+      const count = await SurveyResponse.countDocuments({ surveyId: s._id });
+      surveyList.push({
+        id: s._id,
+        responses: count,
+        link: `/survey/${s._id}`,
+        responsesLink: `/survey/${s._id}/responses`
+      });
+    }
+    res.json(surveyList);
+  } catch (error) {
+    res.status(500).json({ error: 'Error listing surveys.' });
   }
 });
 
-// New endpoint: View survey responses
-app.get('/survey/:id/responses', (req, res) => {
-  const surveyId = req.params.id;
-  if (surveys[surveyId]) {
-    res.json({ responses: surveyResponses[surveyId] });
-  } else {
-    res.status(404).json({ error: 'Survey not found.' });
+// New endpoint: Save survey responses (assumes survey form submits JSON)
+app.post('/survey/:id/response', async (req, res) => {
+  try {
+    const foundSurvey = await Survey.findById(req.params.id);
+    if (!foundSurvey) {
+      return res.status(404).json({ error: 'Survey not found.' });
+    }
+    await SurveyResponse.create({
+      surveyId: foundSurvey._id,
+      responseData: req.body
+    });
+    res.json({ message: 'Response recorded.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not save response.' });
+  }
+});
+
+// Updated endpoint: View survey responses without visualization
+app.get('/survey/:id/responses', async (req, res) => {
+  try {
+    const foundSurvey = await Survey.findById(req.params.id);
+    if (!foundSurvey) {
+      return res.status(404).json({ error: 'Survey not found.' });
+    }
+    const responses = await SurveyResponse.find({ surveyId: foundSurvey._id });
+    res.json({ responses });
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching responses.' });
   }
 });
 

@@ -28,8 +28,8 @@
           const item = document.createElement('div');
           item.innerHTML = `
             Survey ID: ${survey.id} - Responses: ${survey.responses} 
-            [ <a href="${survey.link}" target="_blank">View Form</a> | 
-              <a href="${survey.responsesLink}" target="_blank">View Responses</a> ]
+            [ <a href="${survey.link}">View Form</a> | 
+              <a href="${survey.responsesLink}">View Responses</a> ]
           `;
           listElem.appendChild(item);
         });
