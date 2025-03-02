@@ -91,7 +91,7 @@ app.get('/survey/:id', (req, res) => {
       <!-- ...existing generated survey HTML... -->
       <form id="surveyForm">
         ${surveyHTML}
-        <button type="submit">Submit Survey</button>
+        <!-- Removed extra submit button -->
       </form>
       <script>
         document.getElementById('surveyForm').addEventListener('submit', async function(e) {
